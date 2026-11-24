@@ -12,10 +12,10 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ aprobada por testing (con nº de r
 | T3 | Clientes | ✅ | review-04 (rechazada en review-03) |
 | T4 | Productos y stock | ✅ | review-04 (rechazada en review-03) |
 | T5 | Facturas | ✅ | review-04 |
-| T6 | Panel | ⬜ | |
-| T7 | Paleta de comandos y portada | ⬜ | |
-| T8 | Datos de demo y README | ⬜ | |
-| T9 | Ajustes: datos del emisor en la factura | ⬜ | |
+| T6 | Panel | ✅ | review-05 |
+| T7 | Paleta de comandos y portada | ✅ | review-06 (rechazada en review-05) |
+| T8 | Datos de demo y README | ✅ | review-06 (rechazada en review-05) |
+| T9 | Ajustes: datos del emisor en la factura | ✅ | review-05 |
 
 ---
 
