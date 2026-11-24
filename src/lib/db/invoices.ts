@@ -3,6 +3,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  Timestamp,
   updateDoc,
   where,
   type DocumentReference,
@@ -13,9 +14,9 @@ import { calcInvoice } from "@/lib/invoice";
 import { sortInvoices } from "@/lib/invoiceList";
 import { counterKey, formatInvoiceNumber, invoiceYear } from "@/lib/numbering";
 import { applyStockDelta, InsufficientStockError, MissingProductError } from "@/lib/stock";
-import type { Invoice, InvoiceLine } from "@/lib/types";
-import { customerFromSnapshot, invoiceFromSnapshot, productFromSnapshot } from "./convert";
-import { countersDoc, userCollection, userDoc } from "./paths";
+import type { BusinessProfile, Invoice, InvoiceLine } from "@/lib/types";
+import { businessFromSnapshot, customerFromSnapshot, invoiceFromSnapshot, productFromSnapshot } from "./convert";
+import { businessDoc, countersDoc, userCollection, userDoc } from "./paths";
 import type { Subscribe } from "./types";
 
 /** Todas las facturas del usuario, de la más reciente a la más antigua. */
@@ -48,6 +49,14 @@ export function subscribeInvoice(uid: string, id: string): Subscribe<Invoice | n
     );
 }
 
+/** El emisor sin claves opcionales vacías (Firestore no acepta `undefined`). */
+function withoutEmptyOptionals(profile: BusinessProfile): BusinessProfile {
+  const clean: BusinessProfile = { name: profile.name, taxId: profile.taxId, address: profile.address };
+  if (profile.email) clean.email = profile.email;
+  if (profile.phone) clean.phone = profile.phone;
+  return clean;
+}
+
 /** Unidades por producto, sumando las líneas del mismo producto. */
 function quantitiesByProduct(lines: readonly InvoiceLine[]): Map<string, { quantity: number; name: string }> {
   const totals = new Map<string, { quantity: number; name: string }>();
@@ -60,15 +69,19 @@ function quantitiesByProduct(lines: readonly InvoiceLine[]): Map<string, { quant
 
 /**
  * Emite una factura en UNA transacción (D10):
- * lee el contador del año, el cliente y los productos; comprueba el stock;
+ * lee el contador del año, el emisor, el cliente y los productos; comprueba el stock;
  * escribe la factura (id = número), sube el contador y descuenta el stock.
  * Los importes salen solo de `calcInvoice`. Devuelve el número (`F-AAAA-NNNN`).
+ *
+ * `issuedAt` solo lo usan los datos de ejemplo (fechas pasadas del año en curso);
+ * la app emite siempre con la hora del servidor.
  */
 export async function createInvoice(
   uid: string,
   draft: { customerId: string; lines: readonly InvoiceLine[] },
+  options: { issuedAt?: Date } = {},
 ): Promise<string> {
-  const year = invoiceYear(new Date());
+  const year = invoiceYear(options.issuedAt ?? new Date());
   const key = counterKey(year);
   const countersRef = countersDoc(uid);
   const requested = quantitiesByProduct(draft.lines);
@@ -76,6 +89,7 @@ export async function createInvoice(
   return runTransaction(db, async (transaction) => {
     // 1) Lecturas (todas antes de cualquier escritura).
     const countersSnap = await transaction.get(countersRef);
+    const businessSnap = await transaction.get(businessDoc(uid));
     const customerSnap = await transaction.get(userDoc(uid, "customers", draft.customerId));
     const productSnaps = await Promise.all(
       [...requested.keys()].map((id) => transaction.get(userDoc(uid, "products", id))),
@@ -101,6 +115,7 @@ export async function createInvoice(
     const seq = (typeof counterValue === "number" && Number.isInteger(counterValue) ? counterValue : 0) + 1;
     const number = formatInvoiceNumber(year, seq);
     const totals = calcInvoice(draft.lines);
+    const issuer = businessFromSnapshot(businessSnap);
 
     // 2) Escrituras.
     transaction.set(userDoc(uid, "invoices", number), {
@@ -110,6 +125,7 @@ export async function createInvoice(
       customerId: customer.id,
       customerName: customer.name,
       ...(customer.taxId ? { customerTaxId: customer.taxId } : {}),
+      ...(issuer ? { issuer: withoutEmptyOptionals(issuer) } : {}),
       lines: draft.lines.map((line) => ({
         productId: line.productId,
         name: line.name,
@@ -123,7 +139,7 @@ export async function createInvoice(
       totalCents: totals.totalCents,
       vatBreakdown: totals.vatBreakdown,
       status: "pending",
-      issuedAt: serverTimestamp(),
+      issuedAt: options.issuedAt ? Timestamp.fromDate(options.issuedAt) : serverTimestamp(),
     });
     if (countersSnap.exists()) transaction.update(countersRef, { [key]: seq });
     else transaction.set(countersRef, { [key]: seq });
@@ -133,8 +149,12 @@ export async function createInvoice(
   });
 }
 
-export async function markInvoicePaid(uid: string, id: string): Promise<void> {
-  await updateDoc(userDoc(uid, "invoices", id), { status: "paid", paidAt: serverTimestamp() });
+/** Marca como pagada. `paidAt` solo lo usan los datos de ejemplo; por defecto, la hora del servidor. */
+export async function markInvoicePaid(uid: string, id: string, paidAt?: Date): Promise<void> {
+  await updateDoc(userDoc(uid, "invoices", id), {
+    status: "paid",
+    paidAt: paidAt ? Timestamp.fromDate(paidAt) : serverTimestamp(),
+  });
 }
 
 /**

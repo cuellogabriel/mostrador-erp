@@ -60,3 +60,16 @@ export function centsToInput(cents: number): string {
   const abs = Math.abs(cents);
   return `${sign}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, "0")}`;
 }
+
+const compactEurFormatter = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/** Importe abreviado para ejes de gráficos: 125000 céntimos → "1,3 mil €". */
+export function formatCompactEUR(cents: number): string {
+  if (!Number.isFinite(cents)) throw new RangeError(`Importe no válido: ${cents}`);
+  return compactEurFormatter.format(cents / 100).replace(/\u00a0/g, " ");
+}

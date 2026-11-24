@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dataErrorMessage, MissingCustomerError } from "@/lib/dataErrors";
+import { dataErrorMessage, MissingCustomerError, SeedInterruptedError, SeedNotEmptyError } from "@/lib/dataErrors";
 import { InsufficientStockError, MissingProductError } from "@/lib/stock";
 
 const FALLBACK = "Algo ha fallado al guardar o cargar los datos. Inténtalo de nuevo.";
@@ -17,6 +17,16 @@ describe("dataErrorMessage", () => {
     );
     expect(dataErrorMessage(new MissingProductError("Cable"))).toBe(
       "El producto «Cable» ya no existe. Quítalo de la factura.",
+    );
+  });
+
+  it("explica por qué no se cargan los datos de ejemplo", () => {
+    expect(dataErrorMessage(new SeedNotEmptyError())).toMatch(/cuenta vacía/);
+  });
+
+  it("avisa de los datos parciales si la carga de ejemplo se corta, con el motivo", () => {
+    expect(dataErrorMessage(new SeedInterruptedError({ code: "unavailable" }))).toBe(
+      "Se cargaron datos parciales: la carga se interrumpió (No hay conexión con el servidor. Revisa tu red e inténtalo de nuevo). Borra la cuenta o sigue a mano.",
     );
   });
 

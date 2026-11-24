@@ -54,11 +54,23 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    // ---------- Emisor (datos de tu empresa) ----------
+    function validBusiness(data) {
+      return data is map
+        && data.keys().hasAll(['name', 'taxId', 'address'])
+        && data.keys().hasOnly(['name', 'taxId', 'address', 'email', 'phone'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.taxId is string && data.taxId.size() > 0 && data.taxId.size() <= 20
+        && data.address is string && data.address.size() > 0 && data.address.size() <= 500
+        && optString(data, 'email', 254)
+        && optString(data, 'phone', 30);
+    }
+
     // ---------- Facturas ----------
     function validInvoice(data) {
       return data.keys().hasAll(['number', 'year', 'seq', 'customerId', 'customerName', 'lines',
                                  'baseCents', 'vatCents', 'totalCents', 'vatBreakdown', 'status', 'issuedAt'])
-        && data.keys().hasOnly(['number', 'year', 'seq', 'customerId', 'customerName', 'customerTaxId', 'lines',
+        && data.keys().hasOnly(['number', 'year', 'seq', 'customerId', 'customerName', 'customerTaxId', 'issuer', 'lines',
                                 'baseCents', 'vatCents', 'totalCents', 'vatBreakdown', 'status', 'issuedAt', 'paidAt'])
         && data.year is int && data.year >= 2000 && data.year <= 9999
         && data.seq is int && data.seq >= 1
@@ -66,6 +78,8 @@ service cloud.firestore {
         && data.customerId is string && data.customerId.size() > 0
         && data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 200
         && optString(data, 'customerTaxId', 20)
+        // Opcional: las facturas emitidas antes de configurar el emisor no lo tienen.
+        && (!('issuer' in data) || validBusiness(data.issuer))
         && data.lines is list && data.lines.size() > 0 && data.lines.size() <= 200
         && nonNegativeInt(data.baseCents)
         && nonNegativeInt(data.vatCents)
@@ -106,6 +120,10 @@ service cloud.firestore {
     function validNewInvoiceNumber(uid, invoiceId, data) {
       let key = 'invoices_' + string(data.year);
       return data.year == request.time.year()
+        // La fecha no puede ser futura y es del mismo año UTC que la numeración.
+        // (La app usa serverTimestamp(); los datos de ejemplo pasan fechas anteriores del año.)
+        && data.issuedAt <= request.time
+        && data.issuedAt.year() == data.year
         && isInvoiceNumber(data.number, data.year, data.seq)
         && invoiceId == data.number
         && (
@@ -121,7 +139,7 @@ service cloud.firestore {
       let after = request.resource.data;
       return after.diff(before).affectedKeys().hasOnly(['status', 'paidAt'])
         && (
-          (before.status == 'pending' && after.status == 'paid' && after.paidAt is timestamp)
+          (before.status == 'pending' && after.status == 'paid' && after.paidAt is timestamp && after.paidAt <= request.time)
           || (before.status != 'void' && after.status == 'void')
         );
     }
@@ -180,6 +198,11 @@ service cloud.firestore {
         allow update: if isOwner(uid) && validInvoice(request.resource.data) && validStatusChange();
         // Las facturas no se borran: se anulan.
         allow delete: if false;
+      }
+
+      match /meta/business {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validBusiness(request.resource.data);
       }
 
       match /meta/counters {

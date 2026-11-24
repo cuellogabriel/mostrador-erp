@@ -15,6 +15,7 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ aprobada por testing (con nº de r
 | T6 | Panel | ⬜ | |
 | T7 | Paleta de comandos y portada | ⬜ | |
 | T8 | Datos de demo y README | ⬜ | |
+| T9 | Ajustes: datos del emisor en la factura | ⬜ | |
 
 ---
 
@@ -62,3 +63,8 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ aprobada por testing (con nº de r
 ## T8 · Datos de demo y README
 - `src/lib/db/seed.ts`: crea clientes, productos y facturas de ejemplo para el usuario actual.
 - `README.md`: qué es, cómo se trabajó con los 3 agentes, cómo recrearlo (Firebase + Vercel paso a paso), usuario demo.
+
+## T9 · Ajustes del emisor (añadida tras review-04)
+- Testing observó que una factura legal en España necesita nombre/razón social, NIF y dirección del emisor.
+- `/ajustes`: nombre comercial, NIF/CIF (validado), dirección, email y teléfono, guardados en `users/{uid}/meta/business` (con su regla en `firestore.rules`).
+- La factura copia los datos del emisor al emitirse (como hace con el cliente) y el documento A4 los muestra. Si faltan, aviso en el panel y en "Nueva factura" con enlace a Ajustes.

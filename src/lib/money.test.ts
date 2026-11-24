@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centsToInput, formatEUR, toCents } from "@/lib/money";
+import { centsToInput, formatCompactEUR, formatEUR, toCents } from "@/lib/money";
 
 /** Intl usa espacio duro antes del símbolo €; lo normalizamos para leer mejor los tests. */
 const eur = (cents: number) => formatEUR(cents).replace(/ /g, " ");
@@ -77,5 +77,18 @@ describe("centsToInput", () => {
 
   it("rechaza importes que no son céntimos enteros", () => {
     expect(() => centsToInput(1.5)).toThrow(RangeError);
+  });
+});
+
+describe("formatCompactEUR", () => {
+  it("abrevia miles y millones en español", () => {
+    expect(formatCompactEUR(0)).toBe("0 €");
+    expect(formatCompactEUR(95000)).toBe("950 €");
+    expect(formatCompactEUR(125000)).toBe("1,3 mil €");
+    expect(formatCompactEUR(250000000)).toBe("2,5 M €");
+  });
+
+  it("rechaza importes no finitos", () => {
+    expect(() => formatCompactEUR(Number.NaN)).toThrow(RangeError);
   });
 });

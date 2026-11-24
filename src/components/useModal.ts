@@ -6,6 +6,12 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
+ * Pila de modales abiertos: solo el de arriba atiende Esc y Tab. Así, si se abre la paleta
+ * de comandos encima de un panel, Esc cierra solo la paleta y el panel conserva lo escrito.
+ */
+const openModals: symbol[] = [];
+
+/**
  * Comportamiento común de diálogos modales: foco atrapado dentro de `ref`,
  * Esc cierra, el fondo no hace scroll y al cerrar el foco vuelve a donde estaba.
  */
@@ -15,6 +21,8 @@ export function useModal(ref: RefObject<HTMLElement | null>, onClose: () => void
   useEffect(() => {
     const container = ref.current;
     if (!container) return;
+    const token = Symbol("modal");
+    openModals.push(token);
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -24,6 +32,7 @@ export function useModal(ref: RefObject<HTMLElement | null>, onClose: () => void
     initial.focus();
 
     function onKeyDown(event: KeyboardEvent) {
+      if (openModals[openModals.length - 1] !== token) return;
       if (event.key === "Escape") {
         event.preventDefault();
         close();
@@ -50,6 +59,8 @@ export function useModal(ref: RefObject<HTMLElement | null>, onClose: () => void
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      const index = openModals.indexOf(token);
+      if (index !== -1) openModals.splice(index, 1);
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus();
     };

@@ -15,3 +15,7 @@ export function userDoc(uid: string, name: UserCollection, id: string) {
 export function countersDoc(uid: string) {
   return doc(db, "users", uid, "meta", "counters");
 }
+
+export function businessDoc(uid: string) {
+  return doc(db, "users", uid, "meta", "business");
+}

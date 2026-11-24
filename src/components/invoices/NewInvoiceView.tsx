@@ -4,6 +4,7 @@ import { ArrowLeft, Package, PackageSearch, Send, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useBusiness } from "@/hooks/useBusiness";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useProducts } from "@/hooks/useProducts";
 import { dataErrorMessage } from "@/lib/dataErrors";
@@ -16,6 +17,7 @@ import { EmptyState } from "../EmptyState";
 import { ErrorState } from "../ErrorState";
 import { FormAlert } from "../FormAlert";
 import { PageHeader } from "../PageHeader";
+import { IssuerNotice } from "../settings/IssuerNotice";
 import { TableSkeleton } from "../TableSkeleton";
 import { useToast } from "../ToastProvider";
 import { CustomerPicker } from "./CustomerPicker";
@@ -53,6 +55,7 @@ export function NewInvoiceView() {
   const router = useRouter();
   const customers = useCustomers();
   const products = useProducts();
+  const business = useBusiness();
   const nextKey = useRef(0);
 
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -158,6 +161,11 @@ export function NewInvoiceView() {
     <>
       {backLink}
       <PageHeader title="Nueva factura" description="El número se asigna solo al emitirla." />
+      {business.status === "ready" && !business.data && (
+        <div className="mb-6">
+          <IssuerNotice />
+        </div>
+      )}
       <form onSubmit={handleSubmit} noValidate className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
           <Card title="Cliente" step={1}>

@@ -19,6 +19,7 @@ import { IconButton } from "../IconButton";
 import { PageHeader } from "../PageHeader";
 import { SearchInput } from "../SearchInput";
 import { TableSkeleton } from "../TableSkeleton";
+import { clearIntent, useIntent } from "../intents";
 import { useToast } from "../ToastProvider";
 import { ProductFormDrawer } from "./ProductFormDrawer";
 import { StockBadge } from "./StockBadge";
@@ -32,12 +33,19 @@ export function ProductsView() {
   const [onlyLowStock, setOnlyLowStock] = useState(false);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  // La paleta de comandos puede pedir "Nuevo producto" desde cualquier pantalla.
+  const newRequested = useIntent("new-product");
+  const closeDrawer = () => {
+    setEditing(null);
+    clearIntent("new-product");
+  };
 
   // Al salir de la página (Next la deja oculta, no la desmonta) se cierran los diálogos.
   useLayoutEffect(
     () => () => {
       setEditing(null);
       setDeleting(null);
+      clearIntent("new-product");
     },
     [],
   );
@@ -217,8 +225,8 @@ export function ProductsView() {
       />
       {renderContent()}
 
-      {editing === "new" && <ProductFormDrawer onClose={() => setEditing(null)} />}
-      {editingProduct && <ProductFormDrawer product={editingProduct} onClose={() => setEditing(null)} />}
+      {(editing === "new" || (newRequested && !editing)) && <ProductFormDrawer onClose={closeDrawer} />}
+      {editingProduct && <ProductFormDrawer product={editingProduct} onClose={closeDrawer} />}
       {deleting && (
         <ConfirmDialog
           title={`¿Borrar «${deleting.name}»?`}

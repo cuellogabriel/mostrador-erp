@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate } from "@/lib/dates";
+import { formatDate, formatLongDate } from "@/lib/dates";
 
 describe("formatDate", () => {
   it("formatea como dd/mm/aaaa con ceros a la izquierda", () => {
@@ -16,5 +16,16 @@ describe("formatDate", () => {
 
   it("rechaza fechas no válidas", () => {
     expect(() => formatDate(new Date("no es una fecha"))).toThrow(RangeError);
+  });
+});
+
+describe("formatLongDate", () => {
+  it("escribe el día de la semana, el día y el mes en español", () => {
+    expect(formatLongDate(new Date(2026, 10, 24))).toBe("martes, 24 de noviembre de 2026");
+    expect(formatLongDate(new Date(2027, 0, 1))).toBe("viernes, 1 de enero de 2027");
+  });
+
+  it("rechaza fechas no válidas", () => {
+    expect(() => formatLongDate(new Date(Number.NaN))).toThrow(RangeError);
   });
 });

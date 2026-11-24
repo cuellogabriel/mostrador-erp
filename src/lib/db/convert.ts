@@ -1,6 +1,7 @@
 import { Timestamp, type DocumentSnapshot } from "firebase/firestore";
 import {
   VAT_RATES,
+  type BusinessProfile,
   type Customer,
   type Invoice,
   type InvoiceLine,
@@ -117,8 +118,24 @@ function breakdownFromFields(fields: Fields): VatBreakdownEntry {
   };
 }
 
+function businessFromFields(fields: Fields): BusinessProfile {
+  return {
+    name: readString(fields, "name"),
+    taxId: readString(fields, "taxId"),
+    address: readString(fields, "address"),
+    email: readOptionalString(fields, "email"),
+    phone: readOptionalString(fields, "phone"),
+  };
+}
+
+/** Datos del emisor (`null` si aún no se han configurado). */
+export function businessFromSnapshot(snapshot: DocumentSnapshot): BusinessProfile | null {
+  return snapshot.exists() ? businessFromFields(fieldsOf(snapshot)) : null;
+}
+
 export function invoiceFromSnapshot(snapshot: DocumentSnapshot): Invoice {
   const fields = fieldsOf(snapshot);
+  const issuer = fields.issuer;
   return {
     id: snapshot.id,
     number: readString(fields, "number"),
@@ -127,6 +144,7 @@ export function invoiceFromSnapshot(snapshot: DocumentSnapshot): Invoice {
     customerId: readString(fields, "customerId"),
     customerName: readString(fields, "customerName"),
     customerTaxId: readOptionalString(fields, "customerTaxId"),
+    issuer: isFields(issuer) ? businessFromFields(issuer) : undefined,
     lines: readList(fields, "lines").map(lineFromFields),
     baseCents: readInt(fields, "baseCents"),
     vatCents: readInt(fields, "vatCents"),

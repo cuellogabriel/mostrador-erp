@@ -41,6 +41,15 @@ export interface VatBreakdownEntry {
   vatCents: number;
 }
 
+/** Datos del emisor (tu empresa): `users/{uid}/meta/business` y copia en cada factura. */
+export interface BusinessProfile {
+  name: string;
+  taxId: string;
+  address: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface Invoice {
   id: string;
   number: string;
@@ -49,6 +58,8 @@ export interface Invoice {
   customerId: string;
   customerName: string;
   customerTaxId?: string;
+  /** Copia de los datos del emisor al emitirla (las facturas antiguas pueden no tenerla). */
+  issuer?: BusinessProfile;
   lines: InvoiceLine[];
   baseCents: number;
   vatCents: number;

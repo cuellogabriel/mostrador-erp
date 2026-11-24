@@ -36,7 +36,7 @@ export function NavLinks({ variant }: { variant: "sidebar" | "bottom" }) {
   }
 
   return (
-    <ul className="grid grid-cols-4">
+    <ul className="grid grid-cols-5">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActivePath(pathname, href);
         return (

@@ -11,3 +11,16 @@ export function formatDate(date: Date): string {
   }
   return dateFormatter.format(date);
 }
+
+const longDateFormatter = new Intl.DateTimeFormat("es-ES", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** Fecha larga en español: "martes, 24 de noviembre de 2026". */
+export function formatLongDate(date: Date): string {
+  if (Number.isNaN(date.getTime())) throw new RangeError("Fecha no válida");
+  return longDateFormatter.format(date);
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatDate } from "@/lib/dates";
 import { calcLine } from "@/lib/invoice";
 import { formatEUR } from "@/lib/money";
@@ -20,11 +21,27 @@ export function InvoiceDocument({ invoice, issuerEmail }: { invoice: Invoice; is
       <header className="flex flex-col gap-6 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Logo />
-          <p className="mt-4 text-sm font-medium text-slate-900">Tu empresa</p>
-          {issuerEmail && <p className="text-sm text-slate-600">{issuerEmail}</p>}
-          <p className="mt-1 text-xs text-slate-500 print:hidden">
-            Los datos fiscales de tu empresa aún no se pueden personalizar.
-          </p>
+          {invoice.issuer ? (
+            <address className="mt-4 text-sm text-slate-600 not-italic">
+              <span className="block font-medium text-slate-900">{invoice.issuer.name}</span>
+              <span className="block font-mono">{invoice.issuer.taxId}</span>
+              <span className="block whitespace-pre-line">{invoice.issuer.address}</span>
+              {invoice.issuer.email && <span className="block">{invoice.issuer.email}</span>}
+              {invoice.issuer.phone && <span className="block">{invoice.issuer.phone}</span>}
+            </address>
+          ) : (
+            <>
+              <p className="mt-4 text-sm font-medium text-slate-900">Tu empresa</p>
+              {issuerEmail && <p className="text-sm text-slate-600">{issuerEmail}</p>}
+              <p className="mt-1 max-w-xs text-xs text-slate-500 print:hidden">
+                Esta factura se emitió sin los datos fiscales de tu empresa.{" "}
+                <Link href="/ajustes" className="font-medium text-emerald-700 hover:underline">
+                  Complétalos en Ajustes
+                </Link>{" "}
+                para las próximas.
+              </p>
+            </>
+          )}
         </div>
         <div className="sm:text-right">
           <p className="text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">Factura</p>

@@ -18,6 +18,7 @@ import { IconButton } from "../IconButton";
 import { PageHeader } from "../PageHeader";
 import { SearchInput } from "../SearchInput";
 import { TableSkeleton } from "../TableSkeleton";
+import { clearIntent, useIntent } from "../intents";
 import { useToast } from "../ToastProvider";
 import { CustomerFormDrawer } from "./CustomerFormDrawer";
 
@@ -30,12 +31,20 @@ export function CustomersView() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Customer | "new" | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
+  // La paleta de comandos puede pedir "Nuevo cliente" desde cualquier pantalla.
+  const newRequested = useIntent("new-customer");
+  const drawer = editing ?? (newRequested ? "new" : null);
+  const closeDrawer = () => {
+    setEditing(null);
+    clearIntent("new-customer");
+  };
 
   // Al salir de la página (Next la deja oculta, no la desmonta) se cierran los diálogos.
   useLayoutEffect(
     () => () => {
       setEditing(null);
       setDeleting(null);
+      clearIntent("new-customer");
     },
     [],
   );
@@ -163,9 +172,7 @@ export function CustomersView() {
       />
       {renderContent()}
 
-      {editing && (
-        <CustomerFormDrawer customer={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />
-      )}
+      {drawer && <CustomerFormDrawer customer={drawer === "new" ? undefined : drawer} onClose={closeDrawer} />}
       {deleting && (
         <ConfirmDialog
           title={`¿Borrar a ${deleting.name}?`}
