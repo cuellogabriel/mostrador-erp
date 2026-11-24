@@ -61,3 +61,9 @@ export interface Invoice {
 
 /** Documento `users/{uid}/meta/counters`: claves `invoices_<año>` con el último número usado. */
 export type InvoiceCounters = Record<`invoices_${number}`, number>;
+
+/** Datos editables de un cliente (lo que se guarda, sin id ni fecha de alta). */
+export type CustomerInput = Omit<Customer, "id" | "createdAt">;
+
+/** Datos editables de un producto (lo que se guarda, sin id ni fecha de alta). */
+export type ProductInput = Omit<Product, "id" | "createdAt">;

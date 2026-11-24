@@ -57,3 +57,10 @@ export function useAuth(): AuthContextValue {
   if (!context) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
   return context;
 }
+
+/** Usuario de la sesión dentro de la zona privada, donde `AppShell` garantiza que existe. */
+export function useCurrentUser(): User {
+  const { user } = useAuth();
+  if (!user) throw new Error("useCurrentUser solo puede usarse dentro de la zona privada");
+  return user;
+}

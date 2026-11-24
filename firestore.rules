@@ -82,11 +82,11 @@ service cloud.firestore {
       return 'F-' + string(year) + '-' + zeros + string(seq);
     }
 
-    function isInvoiceNumber(number, year, seq) {
-      return (seq < 10 && number == paddedPrefix(year, seq, '000'))
-        || (seq >= 10 && seq < 100 && number == paddedPrefix(year, seq, '00'))
-        || (seq >= 100 && seq < 1000 && number == paddedPrefix(year, seq, '0'))
-        || (seq >= 1000 && number == paddedPrefix(year, seq, ''));
+    function isInvoiceNumber(invoiceNumber, year, seq) {
+      return (seq < 10 && invoiceNumber == paddedPrefix(year, seq, '000'))
+        || (seq >= 10 && seq < 100 && invoiceNumber == paddedPrefix(year, seq, '00'))
+        || (seq >= 100 && seq < 1000 && invoiceNumber == paddedPrefix(year, seq, '0'))
+        || (seq >= 1000 && invoiceNumber == paddedPrefix(year, seq, ''));
     }
 
     function countersPath(uid) {

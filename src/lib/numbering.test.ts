@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatInvoiceNumber } from "@/lib/numbering";
+import { counterKey, formatInvoiceNumber, invoiceYear } from "@/lib/numbering";
 
 describe("formatInvoiceNumber", () => {
   it("rellena el correlativo con ceros a 4 cifras", () => {
@@ -18,5 +18,20 @@ describe("formatInvoiceNumber", () => {
 
   it.each([26, 10000, 2026.5, -2026])("rechaza el año %s", (year) => {
     expect(() => formatInvoiceNumber(year, 1)).toThrow(RangeError);
+  });
+});
+
+describe("invoiceYear", () => {
+  it("usa el año UTC, no el local", () => {
+    expect(invoiceYear(new Date("2026-12-31T23:30:00Z"))).toBe(2026);
+    // 00:30 del 1 de enero en Madrid (UTC+1) todavía es 2026 en UTC.
+    expect(invoiceYear(new Date("2027-01-01T00:30:00+01:00"))).toBe(2026);
+    expect(invoiceYear(new Date("2027-01-01T00:00:00Z"))).toBe(2027);
+  });
+});
+
+describe("counterKey", () => {
+  it("forma la clave del contador del año", () => {
+    expect(counterKey(2026)).toBe("invoices_2026");
   });
 });

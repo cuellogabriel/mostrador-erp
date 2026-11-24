@@ -20,6 +20,12 @@ export function TextField({ label, error, hint, trailing, className = "", ...inp
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
+        {inputProps.required && (
+          <span className="text-rose-600" aria-hidden="true">
+            {" "}
+            *
+          </span>
+        )}
       </label>
       <div className="relative">
         <input

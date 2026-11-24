@@ -9,9 +9,9 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ aprobada por testing (con nº de r
 |---|---|---|---|
 | T1 | Base: Firebase, login, zona privada, reglas | ✅ | review-02 (rechazada en review-01) |
 | T2 | Lógica pura: dinero, IVA, totales, NIF/CIF/NIE, numeración | ✅ | review-02 (rechazada en review-01) |
-| T3 | Clientes | ⬜ | |
-| T4 | Productos y stock | ⬜ | |
-| T5 | Facturas | ⬜ | |
+| T3 | Clientes | ✅ | review-04 (rechazada en review-03) |
+| T4 | Productos y stock | ✅ | review-04 (rechazada en review-03) |
+| T5 | Facturas | ✅ | review-04 |
 | T6 | Panel | ⬜ | |
 | T7 | Paleta de comandos y portada | ⬜ | |
 | T8 | Datos de demo y README | ⬜ | |

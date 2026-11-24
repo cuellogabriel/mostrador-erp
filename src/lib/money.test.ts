@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatEUR, toCents } from "@/lib/money";
+import { centsToInput, formatEUR, toCents } from "@/lib/money";
 
 /** Intl usa espacio duro antes del símbolo €; lo normalizamos para leer mejor los tests. */
 const eur = (cents: number) => formatEUR(cents).replace(/ /g, " ");
@@ -54,5 +54,28 @@ describe("formatEUR", () => {
   it("rechaza importes que no son céntimos enteros", () => {
     expect(() => formatEUR(12.5)).toThrow(RangeError);
     expect(() => formatEUR(Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe("centsToInput", () => {
+  it.each([
+    [1250, "12,50"],
+    [1205, "12,05"],
+    [0, "0,00"],
+    [7, "0,07"],
+    [123456, "1234,56"],
+    [-320, "-3,20"],
+  ])("convierte %i en %j", (cents, expected) => {
+    expect(centsToInput(cents)).toBe(expected);
+  });
+
+  it("es la inversa de toCents", () => {
+    for (const cents of [0, 1, 99, 100, 1250, 999999]) {
+      expect(toCents(centsToInput(cents))).toBe(cents);
+    }
+  });
+
+  it("rechaza importes que no son céntimos enteros", () => {
+    expect(() => centsToInput(1.5)).toThrow(RangeError);
   });
 });

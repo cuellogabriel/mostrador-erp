@@ -8,3 +8,16 @@ export function formatInvoiceNumber(year: number, seq: number): string {
   }
   return `F-${year}-${String(seq).padStart(4, "0")}`;
 }
+
+/**
+ * Año de numeración de una factura emitida en `now`. Se usa el año UTC porque
+ * firestore.rules lo compara con `request.time` (UTC).
+ */
+export function invoiceYear(now: Date): number {
+  return now.getUTCFullYear();
+}
+
+/** Clave del contador del año en `users/{uid}/meta/counters`. */
+export function counterKey(year: number): `invoices_${number}` {
+  return `invoices_${year}`;
+}
