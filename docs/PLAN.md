@@ -7,8 +7,8 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ aprobada por testing (con nº de r
 
 | ID | Tarea | Estado | Review |
 |---|---|---|---|
-| T1 | Base: Firebase, login, zona privada, reglas | ⬜ | |
-| T2 | Lógica pura: dinero, IVA, totales, NIF/CIF/NIE, numeración | ⬜ | |
+| T1 | Base: Firebase, login, zona privada, reglas | ✅ | review-02 (rechazada en review-01) |
+| T2 | Lógica pura: dinero, IVA, totales, NIF/CIF/NIE, numeración | ✅ | review-02 (rechazada en review-01) |
 | T3 | Clientes | ⬜ | |
 | T4 | Productos y stock | ⬜ | |
 | T5 | Facturas | ⬜ | |

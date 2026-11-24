@@ -1,0 +1,193 @@
+rules_version = '2';
+
+// Mostrador · Reglas de seguridad
+// Cada usuario solo puede leer y escribir dentro de users/{suUid}. Todo lo demás está denegado.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Campo opcional: si viene, es texto de como mucho `max` caracteres.
+    function optString(data, key, max) {
+      return !(key in data) || (data[key] is string && data[key].size() <= max);
+    }
+
+    function nonNegativeInt(value) {
+      return value is int && value >= 0;
+    }
+
+    function validVatRate(value) {
+      return value in [21, 10, 4, 0];
+    }
+
+    // createdAt no se puede cambiar una vez creado el documento.
+    function keepsCreatedAt() {
+      return request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // ---------- Clientes ----------
+    function validCustomer(data) {
+      return data.keys().hasAll(['name', 'createdAt'])
+        && data.keys().hasOnly(['name', 'taxId', 'email', 'phone', 'address', 'notes', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && optString(data, 'taxId', 20)
+        && optString(data, 'email', 254)
+        && optString(data, 'phone', 30)
+        && optString(data, 'address', 500)
+        && optString(data, 'notes', 2000)
+        && data.createdAt is timestamp;
+    }
+
+    // ---------- Productos ----------
+    function validProduct(data) {
+      return data.keys().hasAll(['name', 'priceCents', 'vatRate', 'stock', 'minStock', 'createdAt'])
+        && data.keys().hasOnly(['name', 'sku', 'priceCents', 'vatRate', 'stock', 'minStock', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && optString(data, 'sku', 64)
+        && nonNegativeInt(data.priceCents)
+        && validVatRate(data.vatRate)
+        && nonNegativeInt(data.stock)
+        && nonNegativeInt(data.minStock)
+        && data.createdAt is timestamp;
+    }
+
+    // ---------- Facturas ----------
+    function validInvoice(data) {
+      return data.keys().hasAll(['number', 'year', 'seq', 'customerId', 'customerName', 'lines',
+                                 'baseCents', 'vatCents', 'totalCents', 'vatBreakdown', 'status', 'issuedAt'])
+        && data.keys().hasOnly(['number', 'year', 'seq', 'customerId', 'customerName', 'customerTaxId', 'lines',
+                                'baseCents', 'vatCents', 'totalCents', 'vatBreakdown', 'status', 'issuedAt', 'paidAt'])
+        && data.year is int && data.year >= 2000 && data.year <= 9999
+        && data.seq is int && data.seq >= 1
+        && data.number is string && data.number.matches('^F-' + string(data.year) + '-[0-9]{4,}$')
+        && data.customerId is string && data.customerId.size() > 0
+        && data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 200
+        && optString(data, 'customerTaxId', 20)
+        && data.lines is list && data.lines.size() > 0 && data.lines.size() <= 200
+        && nonNegativeInt(data.baseCents)
+        && nonNegativeInt(data.vatCents)
+        && nonNegativeInt(data.totalCents)
+        && data.totalCents == data.baseCents + data.vatCents
+        && data.vatBreakdown is list && data.vatBreakdown.size() <= 4
+        && data.status in ['pending', 'paid', 'void']
+        && data.issuedAt is timestamp
+        && (!('paidAt' in data) || data.paidAt is timestamp);
+    }
+
+    // Número de factura de `seq` en `year`: 'F-AAAA-' + seq con relleno a 4 cifras.
+    function paddedPrefix(year, seq, zeros) {
+      return 'F-' + string(year) + '-' + zeros + string(seq);
+    }
+
+    function isInvoiceNumber(number, year, seq) {
+      return (seq < 10 && number == paddedPrefix(year, seq, '000'))
+        || (seq >= 10 && seq < 100 && number == paddedPrefix(year, seq, '00'))
+        || (seq >= 100 && seq < 1000 && number == paddedPrefix(year, seq, '0'))
+        || (seq >= 1000 && number == paddedPrefix(year, seq, ''));
+    }
+
+    function countersPath(uid) {
+      return /databases/$(database)/documents/users/$(uid)/meta/counters;
+    }
+
+    // Clave del contador del año en curso (hora del servidor).
+    function counterKey() {
+      return 'invoices_' + string(request.time.year());
+    }
+
+    // Al crear una factura (id del documento = su número):
+    // - el número corresponde a year y seq, y year es el año en curso;
+    // - antes de escribir, el contador del año valía seq - 1 (o no existía y seq == 1);
+    // - después de la transacción, el contador vale exactamente seq.
+    // Así no puede haber números duplicados ni saltos.
+    function validNewInvoiceNumber(uid, invoiceId, data) {
+      let key = 'invoices_' + string(data.year);
+      return data.year == request.time.year()
+        && isInvoiceNumber(data.number, data.year, data.seq)
+        && invoiceId == data.number
+        && (
+          (!exists(countersPath(uid)) && data.seq == 1)
+          || (exists(countersPath(uid)) && get(countersPath(uid)).data.get(key, 0) == data.seq - 1)
+        )
+        && getAfter(countersPath(uid)).data.get(key, 0) == data.seq;
+    }
+
+    // Una factura emitida solo cambia de estado: pendiente → pagada, o pendiente/pagada → anulada.
+    function validStatusChange() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.diff(before).affectedKeys().hasOnly(['status', 'paidAt'])
+        && (
+          (before.status == 'pending' && after.status == 'paid' && after.paidAt is timestamp)
+          || (before.status != 'void' && after.status == 'void')
+        );
+    }
+
+    // ---------- Contadores ----------
+    // Cada escritura sube en 1 solo el contador del año en curso, y en la misma
+    // transacción tiene que crearse la factura con ese número (no quedan huecos).
+    function invoiceExistsAfter(uid, id) {
+      return existsAfter(/databases/$(database)/documents/users/$(uid)/invoices/$(id));
+    }
+
+    function invoiceCreatedWith(uid, seq) {
+      let year = request.time.year();
+      return (seq < 10 && invoiceExistsAfter(uid, paddedPrefix(year, seq, '000')))
+        || (seq >= 10 && seq < 100 && invoiceExistsAfter(uid, paddedPrefix(year, seq, '00')))
+        || (seq >= 100 && seq < 1000 && invoiceExistsAfter(uid, paddedPrefix(year, seq, '0')))
+        || (seq >= 1000 && invoiceExistsAfter(uid, paddedPrefix(year, seq, '')));
+    }
+
+    function validCounterCreate(uid) {
+      let key = counterKey();
+      let data = request.resource.data;
+      return data.keys().hasOnly([key])
+        && data.get(key, 0) == 1
+        && invoiceCreatedWith(uid, 1);
+    }
+
+    function validCounterUpdate(uid) {
+      let key = counterKey();
+      let after = request.resource.data;
+      return after.diff(resource.data).affectedKeys().hasOnly([key])
+        && after.get(key, 0) is int
+        && after.get(key, 0) == resource.data.get(key, 0) + 1
+        && invoiceCreatedWith(uid, after.get(key, 0));
+    }
+
+    match /users/{uid} {
+      match /customers/{customerId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid) && validCustomer(request.resource.data);
+        allow update: if isOwner(uid) && validCustomer(request.resource.data) && keepsCreatedAt();
+      }
+
+      match /products/{productId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid) && validProduct(request.resource.data);
+        allow update: if isOwner(uid) && validProduct(request.resource.data) && keepsCreatedAt();
+      }
+
+      match /invoices/{invoiceId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && validInvoice(request.resource.data)
+          && request.resource.data.status == 'pending'
+          && validNewInvoiceNumber(uid, invoiceId, request.resource.data);
+        allow update: if isOwner(uid) && validInvoice(request.resource.data) && validStatusChange();
+        // Las facturas no se borran: se anulan.
+        allow delete: if false;
+      }
+
+      match /meta/counters {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && validCounterCreate(uid);
+        allow update: if isOwner(uid) && validCounterUpdate(uid);
+        allow delete: if false;
+      }
+    }
+  }
+}
